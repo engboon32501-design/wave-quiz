@@ -1,0 +1,254 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WAVE QUIZ - HEADS UP!</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:18px;font-family:system-ui,sans-serif;
+background:linear-gradient(140deg,#e4f8f5,#edf1ff);
+color:#263b55;text-align:center}
+main{max-width:480px;margin:auto}
+.card{background:white;border-radius:25px;padding:24px;
+box-shadow:0 8px 28px #54758b20;margin:14px 0}
+h1{color:#238e91;font-size:30px;margin:8px}
+h2{font-size:25px}
+p{line-height:1.65}
+button{border:0;border-radius:15px;padding:14px 18px;
+font-size:16px;font-weight:bold;margin:5px;cursor:pointer}
+.primary{background:#258f91;color:white}
+.secondary{background:#e8eff7;color:#30475f}
+.skip{background:#ffe3b5;color:#80500a}
+.hidden{display:none!important}
+.word{font-size:36px;font-weight:900;color:#278d91;
+padding:30px 5px;overflow-wrap:anywhere}
+.timer{font-size:32px;font-weight:900;color:#e28c38}
+.small{font-size:13px;color:#718397}
+.definition{background:#fff4dc;padding:18px;border-radius:16px;
+font-size:19px;line-height:1.6;margin:16px 0}
+.challenge{background:#f0eaff;padding:18px;border-radius:16px;
+font-size:21px;font-weight:bold;margin:18px 0}
+</style>
+</head>
+<body>
+<main>
+
+<section id="home" class="card">
+<div style="font-size:55px">🌊</div>
+<h1>WAVE QUIZ</h1>
+<h2>HEADS UP!</h2>
+<p>เกมทายคำศัพท์เรื่องคลื่น</p>
+<p>30 คำ • คำละ 90 วินาที</p>
+<button class="secondary" onclick="enableTilt()">
+เปิดระบบเอียงโทรศัพท์ 📱
+</button>
+<p id="sensorStatus" class="small">ยังไม่ได้เปิดเซนเซอร์</p>
+<button class="primary" onclick="startGame()">เริ่มเกม 🎮</button>
+</section>
+
+<section id="game" class="card hidden">
+<p id="progress">คำที่ 1 / 30</p>
+<div class="timer" id="timer">90</div>
+<div class="word" id="word"></div>
+<p class="small">ให้เพื่อนช่วยใบ้ แล้วทายคำบนหน้าจอ</p>
+<button class="primary" onclick="correct()">ทายถูก ✓</button>
+<button class="skip" onclick="skipWord()">ข้ามคำ ↪</button>
+<p>คะแนน: <b id="score">0</b></p>
+</section>
+
+<section id="penalty" class="card hidden">
+<div style="font-size:48px">🎲</div>
+<h2>ภารกิจคนข้ามคำ!</h2>
+<p>สุ่มภารกิจสนุก ๆ กันค่ะ</p>
+<div class="challenge" id="challenge"></div>
+<button class="secondary" onclick="reroll()">สุ่มใหม่ 🔄</button>
+<button class="primary" onclick="showExplanation()">ทำภารกิจแล้ว ไปดูเฉลย!</button>
+</section>
+
+<section id="explain" class="card hidden">
+<div style="font-size:42px">💡</div>
+<h2 id="answerWord"></h2>
+<p><b>คำนี้คืออะไร?</b></p>
+<div class="definition" id="definition"></div>
+<button class="primary" onclick="nextWord()">เข้าใจแล้ว ไปต่อ →</button>
+</section>
+
+<section id="result" class="card hidden">
+<div style="font-size:55px">🏆</div>
+<h1>จบเกมแล้ว!</h1>
+<h2 id="finalScore"></h2>
+<p id="resultText"></p>
+<button class="primary" onclick="startGame()">เล่นอีกครั้ง</button>
+</section>
+
+</main>
+
+<script>
+const terms=[
+["คลื่น","การเคลื่อนที่ของพลังงานจากที่หนึ่งไปยังอีกที่หนึ่ง"],
+["แหล่งกำเนิดคลื่น","สิ่งที่ทำให้เกิดคลื่น เช่น มือที่เขย่าเชือก"],
+["คลื่นน้ำ","คลื่นที่เกิดขึ้นบนผิวน้ำ"],
+["คลื่นเสียง","คลื่นที่เกิดจากการสั่นและเดินทางผ่านตัวกลาง"],
+["คลื่นแสง","คลื่นที่ทำให้เรามองเห็นสิ่งต่าง ๆ"],
+["คลื่นกล","คลื่นที่ต้องอาศัยตัวกลางในการเคลื่อนที่"],
+["คลื่นแม่เหล็กไฟฟ้า","คลื่นที่เดินทางได้โดยไม่ต้องอาศัยตัวกลาง"],
+["คลื่นตามขวาง","คลื่นที่ตัวกลางสั่นตั้งฉากกับทิศทางคลื่น"],
+["คลื่นตามยาว","คลื่นที่ตัวกลางสั่นไปตามทิศทางคลื่น"],
+["สันคลื่น","ตำแหน่งสูงที่สุดของคลื่นตามขวาง"],
+["ท้องคลื่น","ตำแหน่งต่ำที่สุดของคลื่นตามขวาง"],
+["แอมพลิจูด","ระยะจากแนวสมดุลถึงสันคลื่นหรือท้องคลื่น"],
+["ความยาวคลื่น","ระยะระหว่างจุดที่มีลักษณะซ้ำกันติดกัน"],
+["ความถี่","จำนวนรอบของคลื่นที่เกิดขึ้นในหนึ่งวินาที"],
+["คาบ","เวลาที่คลื่นใช้ในการครบหนึ่งรอบ"],
+["อัตราเร็วคลื่น","ระยะทางที่คลื่นเคลื่อนที่ได้ในหนึ่งวินาที"],
+["แนวสมดุล","ระดับปกติที่ตัวกลางอยู่นิ่งก่อนเกิดคลื่น"],
+["การสะท้อน","การที่คลื่นกระทบสิ่งกีดขวางแล้วสะท้อนกลับ"],
+["การหักเห","การที่คลื่นเปลี่ยนทิศทางเมื่อผ่านตัวกลางต่างชนิด"],
+["การเลี้ยวเบน","การที่คลื่นอ้อมผ่านขอบสิ่งกีดขวาง"],
+["การแทรกสอด","การที่คลื่นตั้งแต่สองขบวนมาพบกัน"],
+["ตัวกลาง","สิ่งที่คลื่นกลใช้ในการเคลื่อนที่"],
+["คลื่นดล","คลื่นที่เกิดจากการรบกวนเพียงครั้งเดียว"],
+["คลื่นต่อเนื่อง","คลื่นที่เกิดจากการรบกวนซ้ำ ๆ ต่อเนื่องกัน"],
+["คลื่นเสียงในอากาศ","ตัวอย่างคลื่นเสียงที่เดินทางผ่านตัวกลาง"],
+["สุญญากาศ","บริเวณที่ไม่มีสสาร คลื่นเสียงเดินทางผ่านไม่ได้"],
+["คลื่นนิ่ง","รูปแบบคลื่นที่มีตำแหน่งบางจุดอยู่นิ่ง"],
+["ปมคลื่น","ตำแหน่งบนคลื่นนิ่งที่ไม่สั่น"],
+["ปฏิปม","ตำแหน่งบนคลื่นนิ่งที่สั่นมากที่สุด"],
+["พลังงานคลื่น","พลังงานที่ถูกส่งผ่านไปพร้อมกับคลื่น"]
+];
+
+const challenges=[
+"ทำเสียงกบ 3 วินาที 🐸",
+"พูดหนึ่งประโยคด้วยเสียงหุ่นยนต์ 🤖",
+"ทำท่าคลื่นทะเลด้วยแขน 5 วินาที 🌊",
+"พูดคำว่า ฟิสิกส์ เหมือนผู้ประกาศข่าว 🎙️",
+"ทำท่าดีใจแบบเว่อร์ ๆ 3 วินาที 🎉",
+"บอกความรู้เรื่องคลื่น 1 อย่าง 💡",
+"ทำเสียงคลื่นซัดฝั่ง 🌊",
+"ตั้งชื่อเล่นให้คลื่นแบบฮา ๆ 😆",
+"โพสท่านักวิทยาศาสตร์ 3 วินาที 🧪",
+"พูดว่า ฉันจะไม่ยอมแพ้คลื่น! ด้วยเสียงนักพากย์ 📣"
+];
+
+let deck=[],index=0,score=0,time=90,clock=null;
+let skipped=null,sensorEnabled=false,lastTilt=0;
+
+function show(id){
+["home","game","penalty","explain","result"].forEach(x=>
+document.getElementById(x).classList.add("hidden"));
+document.getElementById(id).classList.remove("hidden");
+}
+
+async function enableTilt(){
+try{
+if(typeof DeviceOrientationEvent!=="undefined" &&
+typeof DeviceOrientationEvent.requestPermission==="function"){
+const permission=await DeviceOrientationEvent.requestPermission();
+if(permission!=="granted"){
+alert("ยังไม่ได้อนุญาตให้ใช้เซนเซอร์ค่ะ");
+return;
+}
+}
+window.addEventListener("deviceorientation",handleTilt);
+sensorEnabled=true;
+document.getElementById("sensorStatus").textContent="เปิดเซนเซอร์แล้ว ✓";
+alert("เปิดระบบเอียงโทรศัพท์แล้ว! 🌊");
+}catch(error){
+alert("อุปกรณ์นี้อาจไม่รองรับระบบเอียง");
+}
+}
+
+function handleTilt(event){
+if(!sensorEnabled)return;
+if(document.getElementById("game").classList.contains("hidden"))return;
+const now=Date.now();
+if(now-lastTilt<1100)return;
+const beta=event.beta;
+if(beta===null)return;
+if(beta < -25){
+lastTilt=now;
+correct();
+}else if(beta > 55){
+lastTilt=now;
+skipWord();
+}
+}
+
+function startGame(){
+clearInterval(clock);
+deck=[...terms].sort(()=>Math.random()-.5);
+index=0;score=0;
+show("game");
+loadWord();
+}
+
+function loadWord(){
+if(index>=deck.length){finish();return;}
+time=90;
+document.getElementById("word").textContent=deck[index][0];
+document.getElementById("progress").textContent=
+"คำที่ "+(index+1)+" / "+deck.length;
+document.getElementById("score").textContent=score;
+updateTimer();
+clearInterval(clock);
+clock=setInterval(()=>{
+time--;
+updateTimer();
+if(time<=0){
+clearInterval(clock);
+skipWord();
+}
+},1000);
+}
+
+function updateTimer(){
+document.getElementById("timer").textContent=time;
+}
+
+function correct(){
+if(document.getElementById("game").classList.contains("hidden"))return;
+score++;
+index++;
+loadWord();
+}
+
+function skipWord(){
+if(document.getElementById("game").classList.contains("hidden"))return;
+clearInterval(clock);
+skipped=deck[index];
+show("penalty");
+reroll();
+}
+
+function reroll(){
+document.getElementById("challenge").textContent=
+challenges[Math.floor(Math.random()*challenges.length)];
+}
+
+function showExplanation(){
+document.getElementById("answerWord").textContent=skipped[0];
+document.getElementById("definition").textContent=skipped[1];
+show("explain");
+}
+
+function nextWord(){
+index++;
+skipped=null;
+show("game");
+loadWord();
+}
+
+function finish(){
+clearInterval(clock);
+show("result");
+document.getElementById("finalScore").textContent=
+score+" / "+deck.length+" คะแนน";
+document.getElementById("resultText").textContent=
+score===deck.length?"ยอดเยี่ยม! ทายถูกทุกคำเลย 🎉":
+"เก่งมาก! ลองเล่นอีกครั้งเพื่อทบทวนคำศัพท์นะ";
+}
+</script>
+</body>
+</html>
